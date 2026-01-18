@@ -17,7 +17,6 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Background */
     .stApp {
         background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
         url("https://raw.githubusercontent.com/JD-2081/Amazon_Sentiment_analysis/main/static/images/img.png");
@@ -26,7 +25,6 @@ st.markdown(
         background-attachment: fixed;
     }
 
-    /* Glass container */
     .glass-box {
         background: rgba(255,255,255,0.12);
         backdrop-filter: blur(16px);
@@ -51,7 +49,6 @@ st.markdown(
         font-size: 16px !important;
     }
 
-    /* Buttons */
     button[kind="primary"] {
         background: linear-gradient(45deg, #ff9900, #ffb347);
         border-radius: 30px;
@@ -64,7 +61,6 @@ st.markdown(
         box-shadow: 0 6px 20px rgba(255,153,0,0.4);
     }
 
-    /* Sentiment text */
     .positive {
         color: #00ff88;
         font-size: 26px;
@@ -79,18 +75,10 @@ st.markdown(
         text-align: center;
     }
 
-    /* Confidence */
     .confidence {
         text-align: center;
         font-size: 18px;
         margin-top: 8px;
-    }
-
-    /* Mobile friendly */
-    @media (max-width: 600px) {
-        .glass-box {
-            padding: 25px;
-        }
     }
     </style>
     """,
@@ -101,14 +89,14 @@ st.markdown(
 st.markdown("<div class='glass-box'>", unsafe_allow_html=True)
 st.markdown("<h1>📦 Review Analysis</h1>", unsafe_allow_html=True)
 
-# -------------------- MODEL LINKS --------------------
+# -------------------- GOOGLE DRIVE LINKS --------------------
 MODEL_URL = "https://drive.google.com/uc?id=1oW9aU_5tXses81z6_Yd4xX2GCIEBZ13S"
 TOKENIZER_URL = "https://drive.google.com/uc?id=14bFQK4ewg9fRm3Xdzhg-BpqfxONbVA60"
 
 MODEL_PATH = "sentiment_model.h5"
 TOKENIZER_PATH = "tokenizer.pkl"
 
-# -------------------- MEMORY OPTIMIZED LOAD --------------------
+# -------------------- LOAD MODEL (MEMORY SAFE) --------------------
 @st.cache_resource(show_spinner=False)
 def load_resources():
     if not os.path.exists(MODEL_PATH):
@@ -130,11 +118,16 @@ def clean_text(text):
     text = re.sub(r'[^a-zA-Z\s]', '', text)
     return text.lower().strip()
 
+# -------------------- SESSION STATE --------------------
+if "review_text" not in st.session_state:
+    st.session_state.review_text = ""
+
 # -------------------- INPUT --------------------
 review = st.text_area(
     "",
     placeholder="How was your product?",
-    height=140
+    height=140,
+    key="review_text"
 )
 
 # -------------------- BUTTONS --------------------
@@ -143,7 +136,7 @@ analyze = col1.button("✨ Analyze Now", use_container_width=True)
 clear = col2.button("🗑️ Clear", use_container_width=True)
 
 if clear:
-    st.experimental_rerun()
+    st.session_state.review_text = ""
 
 # -------------------- PREDICTION --------------------
 if analyze:
@@ -160,16 +153,13 @@ if analyze:
         st.markdown("<hr>", unsafe_allow_html=True)
 
         confidence = prediction if prediction > 0.5 else (1 - prediction)
-        confidence_pct = int(confidence * 100)
-
-        # 🎯 Animated confidence bar
         st.progress(confidence)
 
         if prediction > 0.5:
             st.markdown(
                 f"""
                 <div class="positive">Positive 😊</div>
-                <div class="confidence">Confidence: <b>{confidence_pct}%</b></div>
+                <div class="confidence">Confidence: <b>{int(confidence*100)}%</b></div>
                 """,
                 unsafe_allow_html=True
             )
@@ -177,7 +167,7 @@ if analyze:
             st.markdown(
                 f"""
                 <div class="negative">Negative ☹️</div>
-                <div class="confidence">Confidence: <b>{confidence_pct}%</b></div>
+                <div class="confidence">Confidence: <b>{int(confidence*100)}%</b></div>
                 """,
                 unsafe_allow_html=True
             )
