@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Sentiment Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>Review Analysis 📦</h1>
+    <form action="/predict" method="post" id="predictionForm">
+        <textarea name="review" id="reviewBox" rows="5" placeholder="How was your product?" required>{{ review if review }}</textarea>
+        <div class="button-group">
+            <input type="submit" value="Analyze Now ✨" id="submitBtn">
+            <button type="button" id="clearBtn">Clear 🗑️</button>
+        </div>
+    </form>
+    
+    {% if sentiment %}
+    <div class="result-box" id="resultBox">
+        <h3>Sentiment Result:</h3>
+        <p class="{{ 'positive' if 'Positive' in sentiment else 'negative' }}">{{ sentiment }}</p>
+        <p>Confidence: <strong>{{ confidence }}</strong></p>
+    </div>
+    {% endif %}
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
