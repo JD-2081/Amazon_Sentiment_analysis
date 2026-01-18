@@ -13,60 +13,113 @@ st.set_page_config(
     layout="centered"
 )
 
-# -------------------- BACKGROUND + CSS --------------------
+# -------------------- ADVANCED CSS --------------------
 st.markdown(
     """
     <style>
+    /* Background */
     .stApp {
-        background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
-                    url("https://raw.githubusercontent.com/JD-2081/Amazon_Sentiment_analysis/main/static/images/img.png");
+        background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+        url("https://raw.githubusercontent.com/JD-2081/Amazon_Sentiment_analysis/main/static/images/img.png");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
     }
 
+    /* Glass container */
     .glass-box {
-        background: rgba(255,255,255,0.15);
-        backdrop-filter: blur(15px);
+        background: rgba(255,255,255,0.12);
+        backdrop-filter: blur(16px);
         padding: 35px;
-        border-radius: 20px;
+        border-radius: 22px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+        border: 1px solid rgba(255,255,255,0.2);
         color: white;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        max-width: 450px;
+        margin: auto;
+    }
+
+    h1 {
+        text-align: center;
+        color: white;
+        font-weight: 600;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+    }
+
+    textarea {
+        border-radius: 14px !important;
+        font-size: 16px !important;
+    }
+
+    /* Buttons */
+    button[kind="primary"] {
+        background: linear-gradient(45deg, #ff9900, #ffb347);
+        border-radius: 30px;
+        font-weight: bold;
+        transition: 0.3s ease;
+    }
+
+    button[kind="primary"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255,153,0,0.4);
+    }
+
+    /* Sentiment text */
+    .positive {
+        color: #00ff88;
+        font-size: 26px;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .negative {
+        color: #ff4d4d;
+        font-size: 26px;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    /* Confidence */
+    .confidence {
+        text-align: center;
+        font-size: 18px;
+        margin-top: 8px;
+    }
+
+    /* Mobile friendly */
+    @media (max-width: 600px) {
+        .glass-box {
+            padding: 25px;
+        }
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# -------------------- TITLE --------------------
-st.markdown(
-    "<div class='glass-box'><h1>📦 Amazon Review Sentiment Analysis</h1></div>",
-    unsafe_allow_html=True
-)
+# -------------------- UI CONTAINER --------------------
+st.markdown("<div class='glass-box'>", unsafe_allow_html=True)
+st.markdown("<h1>📦 Review Analysis</h1>", unsafe_allow_html=True)
 
-st.write("")
-
-# -------------------- GOOGLE DRIVE FILES --------------------
+# -------------------- MODEL LINKS --------------------
 MODEL_URL = "https://drive.google.com/uc?id=1oW9aU_5tXses81z6_Yd4xX2GCIEBZ13S"
 TOKENIZER_URL = "https://drive.google.com/uc?id=14bFQK4ewg9fRm3Xdzhg-BpqfxONbVA60"
 
 MODEL_PATH = "sentiment_model.h5"
 TOKENIZER_PATH = "tokenizer.pkl"
 
-# -------------------- LOAD MODEL --------------------
-@st.cache_resource
+# -------------------- MEMORY OPTIMIZED LOAD --------------------
+@st.cache_resource(show_spinner=False)
 def load_resources():
     if not os.path.exists(MODEL_PATH):
-        with st.spinner("📥 Downloading model..."):
-            r = requests.get(MODEL_URL)
-            open(MODEL_PATH, "wb").write(r.content)
+        r = requests.get(MODEL_URL)
+        open(MODEL_PATH, "wb").write(r.content)
 
     if not os.path.exists(TOKENIZER_PATH):
-        with st.spinner("📥 Downloading tokenizer..."):
-            r = requests.get(TOKENIZER_URL)
-            open(TOKENIZER_PATH, "wb").write(r.content)
+        r = requests.get(TOKENIZER_URL)
+        open(TOKENIZER_PATH, "wb").write(r.content)
 
-    model = tf.keras.models.load_model(MODEL_PATH)
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
     tokenizer = pickle.load(open(TOKENIZER_PATH, "rb"))
     return model, tokenizer
 
@@ -77,21 +130,18 @@ def clean_text(text):
     text = re.sub(r'[^a-zA-Z\s]', '', text)
     return text.lower().strip()
 
-# -------------------- UI FORM --------------------
-st.markdown("<div class='glass-box'>", unsafe_allow_html=True)
-
+# -------------------- INPUT --------------------
 review = st.text_area(
-    "✍️ How was your product?",
-    height=140,
-    placeholder="Type your Amazon review here..."
+    "",
+    placeholder="How was your product?",
+    height=140
 )
 
+# -------------------- BUTTONS --------------------
 col1, col2 = st.columns(2)
+analyze = col1.button("✨ Analyze Now", use_container_width=True)
+clear = col2.button("🗑️ Clear", use_container_width=True)
 
-analyze = col1.button("✨ Analyze Now")
-clear = col2.button("🗑️ Clear")
-
-# -------------------- CLEAR --------------------
 if clear:
     st.experimental_rerun()
 
@@ -105,11 +155,31 @@ if analyze:
         padded = pad_sequences(seq, maxlen=200)
 
         with st.spinner("🔍 Analyzing sentiment..."):
-            prediction = model.predict(padded)[0][0]
+            prediction = float(model.predict(padded)[0][0])
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        confidence = prediction if prediction > 0.5 else (1 - prediction)
+        confidence_pct = int(confidence * 100)
+
+        # 🎯 Animated confidence bar
+        st.progress(confidence)
 
         if prediction > 0.5:
-            st.success(f"😊 Positive Sentiment\n\nConfidence: **{prediction*100:.1f}%**")
+            st.markdown(
+                f"""
+                <div class="positive">Positive 😊</div>
+                <div class="confidence">Confidence: <b>{confidence_pct}%</b></div>
+                """,
+                unsafe_allow_html=True
+            )
         else:
-            st.error(f"☹️ Negative Sentiment\n\nConfidence: **{(1-prediction)*100:.1f}%**")
+            st.markdown(
+                f"""
+                <div class="negative">Negative ☹️</div>
+                <div class="confidence">Confidence: <b>{confidence_pct}%</b></div>
+                """,
+                unsafe_allow_html=True
+            )
 
 st.markdown("</div>", unsafe_allow_html=True)
